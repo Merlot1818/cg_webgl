@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel=stylesheet href="css/base.css" />
+</head>
+
+<body onload="init();">
+    <script src="./libs/three.js"></script>
+    <script src="./libs/stats.js"></script>
+    <script src="./libs/dat.gui.min.js"></script>
+    <script src="./libs/dat.color.min.js"></script>
+
+    <script src="./js/Detector.js"></script>
+    <script src="./js/controls/OrbitControls.js"></script>
+
+    <script src="./js/threex/KeyboardState.js"></script>
+    <script src="./js/threex/fullscreen.js"></script>
+    <script src="./js/threex/WindowResize.js"></script>
+
+    <div id="viewport" style="position: absolute; left:0px; top:0px"></div>
+    <script>
+        var container, scene, camera, renderer, controls, stats, gui = new dat.GUI(), keyboard, cube, parameters, selectedObject;
+        var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+        var raycaster, mouse;
+        var datas = [];
+        var INTERSECTED;
+        var parentTransform;
+
+        function init() {
+            initRenderer();
+            initScene();
+            initCamera();
+            initEvents();
+            initControls();
+            initRayCaster();
+            initKeyboard();
+            initGUI();
+            initStats();
+            render();
+        }
+        function initRenderer() {
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+            container = document.getElementById('viewport');
+            container.appendChild(renderer.domElement);
+        }
+
+        function initCamera() {
+            var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+            camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+            camera.position.set(0, 150, 2750);
+            camera.lookAt(scene.position);
+            scene.add(camera);
+        }
+
+        function initEvents() {
+            // EVENTS
+            THREEx.WindowResize(renderer, camera);
+            THREEx.FullScreen.bindKey({ charCode: 'f'.charCodeAt(0) });
+        }
+
+        function initRayCaster() {
+            raycaster = new THREE.Raycaster();
+            raycaster.linePrecision = 3;
+
+            // gui
+            var folder = gui.addFolder('RayCaster');
+            folder.add(raycaster, 'linePrecision').min(0).max(100).step(0.1).listen().onChange(function (value) {
+                console.log(raycaster.linePrecision);
+            });
+            folder.open();
+
+            mouse = new THREE.Vector2();
+
+            raycaster.setFromCamera(mouse, camera);
+
+            renderer.domElement.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+                // calculate mouse position in normalized device coordinates
+                // (-1 to +1) for both components
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+
+                var intersects = raycaster.intersectObjects(parentTransform.children, true);
+                if (intersects.length > 0) {
+                    sphereInter.visible = true;
+                    sphereInter.position.copy(intersects[0].point);
+                } else {
+                    sphereInter.visible = false;
+                }
+
+            }, false);
+
+        }
+
+        function initScene() {
+            scene = new THREE.Scene();
+
+            var axes = new THREE.AxisHelper(1000);
+            scene.add(axes);
+
+            scene.add(new THREE.AmbientLight(0x444444));
+
+            // LIGHT
+            var light1 = new THREE.DirectionalLight(0xffffff, 0.5);
+            light1.position.set(1, 1, 1);
+            scene.add(light1);
+
+            var light2 = new THREE.DirectionalLight(0xffffff, 1.5);
+            light2.position.set(0, - 1, 0);
+            scene.add(light2);
+
+            var geometry = new THREE.SphereBufferGeometry(5);
+            var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            sphereInter = new THREE.Mesh(geometry, material);
+            sphereInter.visible = false;
+            scene.add(sphereInter);
+            var lineGeometry = new THREE.BufferGeometry();
+            var points = [];
+            var point = new THREE.Vector3();
+            var direction = new THREE.Vector3();
+            for (var i = 0; i < 50; i++) {
+                direction.x += Math.random() - 0.5;
+                direction.y += Math.random() - 0.5;
+                direction.z += Math.random() - 0.5;
+                direction.normalize().multiplyScalar(10);
+                point.add(direction);
+                points.push(point.x, point.y, point.z);
+            }
+            lineGeometry.addAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            parentTransform = new THREE.Object3D();
+            parentTransform.position.x = Math.random() * 40 - 20;
+            parentTransform.position.y = Math.random() * 40 - 20;
+            parentTransform.position.z = Math.random() * 40 - 20;
+            parentTransform.rotation.x = Math.random() * 2 * Math.PI;
+            parentTransform.rotation.y = Math.random() * 2 * Math.PI;
+            parentTransform.rotation.z = Math.random() * 2 * Math.PI;
+            parentTransform.scale.x = Math.random() + 0.5;
+            parentTransform.scale.y = Math.random() + 0.5;
+            parentTransform.scale.z = Math.random() + 0.5;
+            for (var i = 0; i < 50; i++) {
+                var object;
+                if (Math.random() > 0.5) {
+                    object = new THREE.Line(lineGeometry);
+                } else {
+                    object = new THREE.LineSegments(lineGeometry);
+                }
+                object.position.x = Math.random() * 400 - 200;
+                object.position.y = Math.random() * 400 - 200;
+                object.position.z = Math.random() * 400 - 200;
+                object.rotation.x = Math.random() * 2 * Math.PI;
+                object.rotation.y = Math.random() * 2 * Math.PI;
+                object.rotation.z = Math.random() * 2 * Math.PI;
+                object.scale.x = Math.random() + 0.5;
+                object.scale.y = Math.random() + 0.5;
+                object.scale.z = Math.random() + 0.5;
+                parentTransform.add(object);
+            }
+            scene.add(parentTransform);
+        }
+
+        function initControls() {
+            // CONTROLS
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+        }
+
+        function initKeyboard() {
+            keyboard = new THREEx.KeyboardState();
+        }
+
+        function initGUI() {
+
+
+            parameters = {
+                x: 0, y: 30, z: 0,
+                color: "#ff0000", // color (change "#" to "0x")
+                opacity: 1,
+                visible: true,
+                material: "Phong",
+                reset: function () {
+                    resetCube();
+                }
+            };
+
+            var folder1 = gui.addFolder('Position');
+            var cubeX = folder1.add(parameters, 'x').min(-200).max(200).step(1).listen();
+            var cubeY = folder1.add(parameters, 'y').min(0).max(100).step(1).listen();
+            var cubeZ = folder1.add(parameters, 'z').min(-200).max(200).step(1).listen();
+            folder1.open();
+
+            cubeX.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.x = value;
+            });
+            cubeY.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.y = value;
+            });
+            cubeZ.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.z = value;
+            });
+
+            var cubeColor = gui.addColor(parameters, 'color').name('Color').listen();
+            cubeColor.onChange(function (value) { // onFinishChange
+                if (INTERSECTED) INTERSECTED.material.color.setHex(value.replace("#", "0x"));
+            });
+
+            var cubeOpacity = gui.add(parameters, 'opacity').min(0).max(1).step(0.01).name('Opacity').listen();
+            cubeOpacity.onChange(function (value) {
+                if (INTERSECTED) {
+                    INTERSECTED.material.opacity = value;
+                }
+            });
+
+            var cubeMaterial = gui.add(parameters, 'material', ["Basic", "Lambert", "Phong", "Wireframe"]).name('Material Type').listen();
+            cubeMaterial.onChange(function (value) { updateCube(); });
+
+            var cubeVisible = gui.add(parameters, 'visible').name('Visible?').listen();
+            cubeVisible.onChange(function (value) { cube.visible = value; });
+
+            gui.add(parameters, 'reset').name("Reset Cube Parameters");
+            gui.open();
+        }
+
+        function initStats() {
+            // STATS
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.bottom = '0px';
+            stats.domElement.style.zIndex = 100;
+            container.appendChild(stats.domElement);
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            renderer.render(scene, camera);
+            update();
+        }
+
+        function updateCube() {
+            var value = parameters.material;
+            var newMaterial;
+            if (value == "Basic") {
+                newMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            } else if (value == "Lambert") {
+                newMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            } else if (value == "Phong") {
+                newMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+            } else {// (value == "Wireframe") 
+                newMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+            }
+            if (INTERSECTED) {
+                INTERSECTED.material = newMaterial;
+                INTERSECTED.position.x = parameters.x;
+                INTERSECTED.position.y = parameters.y;
+                INTERSECTED.position.z = parameters.z;
+                INTERSECTED.material.color.setHex(parameters.color.replace("#", "0x"));
+                INTERSECTED.material.opacity = parameters.opacity;
+                INTERSECTED.material.transparent = true;
+                INTERSECTED.visible = parameters.visible;
+            }
+        }
+
+        function resetCube() {
+            parameters.x = 0;
+            parameters.y = 30;
+            parameters.z = 0;
+            parameters.color = "#ff0000";
+            parameters.opacity = 1;
+            parameters.visible = true;
+            parameters.material = "Phong";
+            updateCube();
+        }
+
+        function update() {
+            if (keyboard.pressed("z")) {
+                // do something
+                console.log('z');
+            }
+            controls.update();
+            stats.update();
+        }
+    </script>
+</body>
+
+</html>

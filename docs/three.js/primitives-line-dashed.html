@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel=stylesheet href="css/base.css" />
+</head>
+
+<body onload="init();">
+    <script src="./libs/three.js"></script>
+    <script src="./libs/stats.js"></script>
+    <script src="./libs/dat.gui.min.js"></script>
+    <script src="./libs/dat.color.min.js"></script>
+
+    <script src="./js/Detector.js"></script>
+    <script src="./js/controls/OrbitControls.js"></script>
+
+    <script src="./js/threex/KeyboardState.js"></script>
+    <script src="./js/threex/fullscreen.js"></script>
+    <script src="./js/threex/WindowResize.js"></script>
+
+    <div id="viewport" style="position: absolute; left:0px; top:0px"></div>
+    <script>
+        var container, scene, camera, renderer, controls, stats, gui, keyboard, cube, parameters;
+        var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+
+        function init() {
+            initRenderer();
+            initScene();
+            initCamera();
+            initEvents();
+            initControls();
+            initKeyboard();
+            initGUI();
+            initStats();
+            render();
+        }
+        function initRenderer() {
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+            container = document.getElementById('viewport');
+            container.appendChild(renderer.domElement);
+
+
+        }
+
+        function initCamera() {
+            var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+            camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+            camera.position.set(0, 150, 400);
+            camera.lookAt(scene.position);
+            scene.add(camera);
+        }
+
+        function initEvents() {
+            // EVENTS
+            THREEx.WindowResize(renderer, camera);
+            THREEx.FullScreen.bindKey({ charCode: 'f'.charCodeAt(0) });
+        }
+
+        function initScene() {
+            scene = new THREE.Scene();
+
+            // LIGHT
+            var light = new THREE.PointLight(0xffffff);
+            light.position.set(-100, 150, 100);
+            scene.add(light);
+
+            // FLOOR
+            var floorTexture = new THREE.TextureLoader().load("./images/checkerboard.jpg");
+            floorTexture.wrapS = THREE.RepeatWrapping;
+            floorTexture.wrapT = THREE.RepeatWrapping;
+            floorTexture.repeat.set(10, 10);
+            var floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
+            var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
+            var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.position.y = -0.5;
+            floor.rotation.x = Math.PI / 2;
+            scene.add(floor);
+
+            // SKYBOX/FOG
+            var skyBoxGeometry = new THREE.CubeGeometry(10000, 10000, 10000);
+            var skyBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x9999ff, side: THREE.DoubleSide });
+            var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
+            scene.add(skyBox);
+
+            scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
+
+            // CUSTOM //
+            var cubeGeometry = new THREE.CubeGeometry(50, 50, 50);
+            var cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 1 });
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 25, 0);
+            scene.add(cube);
+
+            var axes = new THREE.AxesHelper(1000);
+            scene.add(axes);
+
+            var lineGeometry = new THREE.Geometry();
+            var vertArray = lineGeometry.vertices;
+            vertArray.push(new THREE.Vector3(-150, -100, 0), new THREE.Vector3(-150, 100, 0));
+            var lineMaterial = new THREE.LineBasicMaterial({ color: 0xcc0000 });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            line.computeLineDistances();
+            scene.add(line);
+
+            var lineGeometry = new THREE.Geometry();
+            var vertArray = lineGeometry.vertices;
+            vertArray.push(new THREE.Vector3(-100, -100, 0), new THREE.Vector3(-100, 100, 0));
+            var lineMaterial = new THREE.LineDashedMaterial({ color: 0x00cc00, dashSize: 4, gapSize: 2 });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            line.computeLineDistances();
+            scene.add(line);
+
+            var lineGeometry = new THREE.Geometry();
+            var vertArray = lineGeometry.vertices;
+            vertArray.push(new THREE.Vector3(-50, -100, 0), new THREE.Vector3(-50, 100, 0));
+            var lineMaterial = new THREE.LineDashedMaterial({ color: 0x0000cc, dashSize: 1, gapSize: 3 });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            line.computeLineDistances();
+            scene.add(line);
+
+            var cubeGeometry = new THREE.CubeGeometry(50, 50, 50);
+            // use LineBasicMaterial if no dashes are desired
+            var dashMaterial = new THREE.LineDashedMaterial({ color: 0xFFFF00, dashSize: 2, gapSize: 3 });
+            cube = new THREE.LineSegments(geo2line(cubeGeometry), dashMaterial, THREE.LinePieces);
+            cube.position.set(0, 25, 0);
+            cube.computeLineDistances();
+            scene.add(cube);
+        }
+
+        function geo2line(geo) {// credit to WestLangley!
+
+            var geometry = new THREE.Geometry();
+            var vertices = geometry.vertices;
+
+            for (i = 0; i < geo.faces.length; i++) {
+                var face = geo.faces[i];
+                if (face instanceof THREE.Face3) {
+                    var a = geo.vertices[face.a].clone();
+                    var b = geo.vertices[face.b].clone();
+                    var c = geo.vertices[face.c].clone();
+                    vertices.push(a, b, b, c, c, a);
+                }
+                else if (face instanceof THREE.Face4) {
+                    var a = geo.vertices[face.a].clone();
+                    var b = geo.vertices[face.b].clone();
+                    var c = geo.vertices[face.c].clone();
+                    var d = geo.vertices[face.d].clone();
+                    vertices.push(a, b, b, c, c, d, d, a);
+                }
+            }
+
+
+            return geometry;
+        }
+
+        function initControls() {
+            // CONTROLS
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+        }
+
+        function initKeyboard() {
+            keyboard = new THREEx.KeyboardState();
+        }
+
+        function initGUI() {
+            gui = new dat.GUI();
+
+            parameters = {
+                x: 0, y: 25, z: 0,
+                color: "#ff0000", // color (change "#" to "0x")
+                opacity: 1,
+                visible: true,
+                material: "Phong",
+                reset: function () {
+                    resetCube();
+                }
+            };
+
+            var folder1 = gui.addFolder('Position');
+            var cubeX = folder1.add(parameters, 'x').min(-200).max(200).step(1).listen();
+            var cubeY = folder1.add(parameters, 'y').min(0).max(100).step(1).listen();
+            var cubeZ = folder1.add(parameters, 'z').min(-200).max(200).step(1).listen();
+            folder1.open();
+
+            cubeX.onChange(function (value) { cube.position.x = value; });
+            cubeY.onChange(function (value) { cube.position.y = value; });
+            cubeZ.onChange(function (value) { cube.position.z = value; });
+
+            var cubeColor = gui.addColor(parameters, 'color').name('Color').listen();
+            cubeColor.onChange(function (value) // onFinishChange
+            { cube.material.color.setHex(value.replace("#", "0x")); });
+
+            var cubeOpacity = gui.add(parameters, 'opacity').min(0).max(1).step(0.01).name('Opacity').listen();
+            cubeOpacity.onChange(function (value) { cube.material.opacity = value; });
+
+            var cubeMaterial = gui.add(parameters, 'material', ["Basic", "Lambert", "Phong", "Wireframe"]).name('Material Type').listen();
+            cubeMaterial.onChange(function (value) { updateCube(); });
+
+            var cubeVisible = gui.add(parameters, 'visible').name('Visible?').listen();
+            cubeVisible.onChange(function (value) { cube.visible = value; });
+
+            gui.add(parameters, 'reset').name("Reset Cube Parameters");
+            gui.open();
+        }
+
+        function initStats() {
+            // STATS
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.bottom = '0px';
+            stats.domElement.style.zIndex = 100;
+            container.appendChild(stats.domElement);
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            renderer.render(scene, camera);
+            update();
+        }
+
+        function updateCube() {
+            var value = parameters.material;
+            var newMaterial;
+            if (value == "Basic") {
+                newMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            } else if (value == "Lambert") {
+                newMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            } else if (value == "Phong") {
+                newMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+            } else {// (value == "Wireframe") 
+                newMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+            }
+            cube.material = newMaterial;
+
+            cube.position.x = parameters.x;
+            cube.position.y = parameters.y;
+            cube.position.z = parameters.z;
+            cube.material.color.setHex(parameters.color.replace("#", "0x"));
+            cube.material.opacity = parameters.opacity;
+            cube.material.transparent = true;
+            cube.visible = parameters.visible;
+        }
+
+        function resetCube() {
+            parameters.x = 0;
+            parameters.y = 30;
+            parameters.z = 0;
+            parameters.color = "#ff0000";
+            parameters.opacity = 1;
+            parameters.visible = true;
+            parameters.material = "Phong";
+            updateCube();
+        }
+
+        function update() {
+            if (keyboard.pressed("z")) {
+                // do something
+                console.log('z');
+            }
+            controls.update();
+            stats.update();
+        }
+    </script>
+</body>
+
+</html>

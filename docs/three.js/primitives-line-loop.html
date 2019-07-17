@@ -88,10 +88,9 @@
                 new THREE.Vector3(100, 0, 0)
             );
 
-            var line = new THREE.Line(geometry, material);
+            var line = new THREE.LineLoop(geometry, material);
             scene.add(line);
             window.addEventListener('resize', onWindowResize, false);
-
         }
 
         function render() {

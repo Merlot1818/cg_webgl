@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js webgl - lines - colors</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            color: #ffffff;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        a {
+            color: orange;
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: #0080ff;
+        }
+    </style>
+</head>
+
+<body onload="init();">
+    <script src="./libs/three.js"></script>
+
+    <script>
+        var mouseX = 0, mouseY = 0;
+
+        var windowHalfX = window.innerWidth / 2;
+        var windowHalfY = window.innerHeight / 2;
+
+        var camera, scene, renderer;
+        function init() {
+            initRenderer();
+            initCamera();
+            initScene();
+            render();
+        }
+
+        function initRenderer() {
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+        }
+
+
+        function initCamera() {
+            camera = new THREE.PerspectiveCamera(33, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.z = 100;
+        }
+
+        function initScene() {
+            scene = new THREE.Scene();
+            var material = new THREE.LineBasicMaterial({
+                vertexColors: THREE.VertexColors,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+
+            var pointCount = 4;
+            var linePointCount = (pointCount - 1) * 2 * pointCount;
+
+            var pointPositions = new Float32Array(pointCount * 3);
+
+            var linePointPositions = new Float32Array(linePointCount * 3);
+            var linePointColors = new Float32Array(linePointCount * 3);
+
+            for (var i = 0, imax = pointCount; i < imax; ++i) {
+                pointPositions[i * 3] = Math.random() * 10 - 5;
+                pointPositions[i * 3 + 1] = Math.random() * 10 - 5;
+                pointPositions[i * 3 + 2] = Math.random() * 10 - 5;
+            }
+
+            var posi = 0;
+            var coli = 0;
+
+            for (var i = 0, imax = pointCount; i < imax; ++i) {
+
+                for (var j = 0, jmax = pointCount; j < jmax; ++j) {
+                    if (i == j) continue;
+
+                    linePointPositions[posi++] = pointPositions[i * 3];
+                    linePointPositions[posi++] = pointPositions[i * 3 + 1];
+                    linePointPositions[posi++] = pointPositions[i * 3 + 2];
+                    linePointPositions[posi++] = pointPositions[j * 3];
+                    linePointPositions[posi++] = pointPositions[j * 3 + 1];
+                    linePointPositions[posi++] = pointPositions[j * 3 + 2];
+
+                    linePointColors[coli++] = 1.0;
+                    linePointColors[coli++] = 0.0;
+                    linePointColors[coli++] = 0.0;
+                    linePointColors[coli++] = 0.0;
+                    linePointColors[coli++] = 1.0;
+                    linePointColors[coli++] = 0.0;
+                }
+            }
+
+            var lineGeometry = new THREE.BufferGeometry();
+
+            lineGeometry.addAttribute("position", new THREE.BufferAttribute(linePointPositions, 3).setDynamic(true));
+            lineGeometry.addAttribute("color", new THREE.BufferAttribute(linePointColors, 3).setDynamic(true));
+
+            var line = new THREE.LineSegments(lineGeometry, material);
+            scene.add(line);
+
+            window.addEventListener('resize', onWindowResize, false);
+
+        }
+
+
+
+        function render() {
+            camera.position.y += (- mouseY + 0 - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+            var time = Date.now() * 0.0005;
+            for (var i = 0; i < scene.children.length; i++) {
+                var object = scene.children[i];
+                if (object.isLine) {
+                    object.rotation.y = time * (i % 2 ? 1 : - 1);
+                }
+            }
+            renderer.render(scene, camera);
+            requestAnimationFrame(render);
+        }
+
+        function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onDocumentMouseMove(event) {
+            mouseX = event.clientX - windowHalfX;
+            mouseY = event.clientY - windowHalfY;
+        }
+
+        function onDocumentTouchStart(event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+                mouseX = event.touches[0].pageX - windowHalfX;
+                mouseY = event.touches[0].pageY - windowHalfY;
+            }
+        }
+
+        function onDocumentTouchMove(event) {
+            if (event.touches.length == 1) {
+                event.preventDefault();
+                mouseX = event.touches[0].pageX - windowHalfX;
+                mouseY = event.touches[0].pageY - windowHalfY;
+            }
+        }
+
+
+
+    </script>
+</body>
+
+</html>

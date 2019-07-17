@@ -30,6 +30,7 @@
             initRenderer();
             initScene();
             initCamera();
+            initEvents();
             initControls();
             initKeyboard();
             initGUI();
@@ -43,9 +44,7 @@
             container = document.getElementById('viewport');
             container.appendChild(renderer.domElement);
 
-            // EVENTS
-            THREEx.WindowResize(renderer, camera);
-            THREEx.FullScreen.bindKey({ charCode: 'm'.charCodeAt(0) });
+
         }
 
         function initCamera() {
@@ -54,6 +53,12 @@
             camera.position.set(0, 150, 400);
             camera.lookAt(scene.position);
             scene.add(camera);
+        }
+
+        function initEvents() {
+            // EVENTS
+            THREEx.WindowResize(renderer, camera);
+            THREEx.FullScreen.bindKey({ charCode: 'f'.charCodeAt(0) });
         }
 
         function initScene() {
@@ -78,21 +83,21 @@
 
             // SKYBOX/FOG
             var skyBoxGeometry = new THREE.CubeGeometry(10000, 10000, 10000);
-            var skyBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x9999ff, side: THREE.BackSide });
+            var skyBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x9999ff, side: THREE.DoubleSide });
             var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
             scene.add(skyBox);
+
             scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
 
             // CUSTOM //
             var cubeGeometry = new THREE.CubeGeometry(50, 50, 50);
             var cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 1 });
             cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.set(0, 30, 0);
+            cube.position.set(0, 25, 0);
             scene.add(cube);
 
-            var axes = new THREE.AxisHelper();
+            var axes = new THREE.AxisHelper(1000);
             scene.add(axes);
-
         }
 
         function initControls() {
@@ -108,12 +113,14 @@
             gui = new dat.GUI();
 
             parameters = {
-                x: 0, y: 30, z: 0,
+                x: 0, y: 25, z: 0,
                 color: "#ff0000", // color (change "#" to "0x")
                 opacity: 1,
                 visible: true,
                 material: "Phong",
-                reset: function () { resetCube() }
+                reset: function () {
+                    resetCube();
+                }
             };
 
             var folder1 = gui.addFolder('Position');
@@ -161,14 +168,15 @@
         function updateCube() {
             var value = parameters.material;
             var newMaterial;
-            if (value == "Basic")
+            if (value == "Basic") {
                 newMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            else if (value == "Lambert")
+            } else if (value == "Lambert") {
                 newMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
-            else if (value == "Phong")
+            } else if (value == "Phong") {
                 newMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
-            else // (value == "Wireframe")
+            } else {// (value == "Wireframe") 
                 newMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+            }
             cube.material = newMaterial;
 
             cube.position.x = parameters.x;
@@ -194,6 +202,7 @@
         function update() {
             if (keyboard.pressed("z")) {
                 // do something
+                console.log('z');
             }
             controls.update();
             stats.update();

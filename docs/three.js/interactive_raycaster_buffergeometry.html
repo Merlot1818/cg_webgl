@@ -27,6 +27,7 @@
         var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
         var raycaster, mouse;
         var datas = [];
+        var INTERSECTED;
 
         function init() {
             initRenderer();
@@ -51,7 +52,7 @@
         function initCamera() {
             var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
             camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
-            camera.position.set(0, 150, 400);
+            camera.position.set(0, 150, 2750);
             camera.lookAt(scene.position);
             scene.add(camera);
         }
@@ -67,7 +68,7 @@
             mouse = new THREE.Vector2();
             raycaster.setFromCamera(mouse, camera);
 
-            window.addEventListener('mousedown', function (event) {
+            renderer.domElement.addEventListener('mousedown', function (event) {
                 /*  // calculate mouse position in normalized device coordinates
                  // (-1 to +1) for both components
                  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -88,13 +89,19 @@
 
                 var intersects = getIntersects(event.layerX, event.layerY);
                 if (intersects.length > 0) {
-                    var res = intersects.filter(function (res) {
-                        return res && res.object;
-                    })[0];
-                    if (res && res.object) {
-                        selectedObject = res.object;
-                        selectedObject.material.color.set('#ffff00');
-                    }
+                    var intersect = intersects[0];
+                    var face = intersect.face;
+                    var linePosition = line.geometry.attributes.position;
+                    var meshPosition = mesh.geometry.attributes.position;
+                    linePosition.copyAt(0, meshPosition, face.a);
+                    linePosition.copyAt(1, meshPosition, face.b);
+                    linePosition.copyAt(2, meshPosition, face.c);
+                    linePosition.copyAt(3, meshPosition, face.a);
+                    mesh.updateMatrix();
+                    line.geometry.applyMatrix(mesh.matrix);
+                    line.visible = true;
+                } else {
+                    line.visible = false;
                 }
             }, false);
 
@@ -105,7 +112,7 @@
             y = - (y / window.innerHeight) * 2 + 1;
             mouse.set(x, y, 0.5);
             raycaster.setFromCamera(mouse, camera);
-            return raycaster.intersectObjects(datas, true);
+            return raycaster.intersectObject(window.mesh, true);
         }
 
         function initScene() {
@@ -114,68 +121,110 @@
             var axes = new THREE.AxisHelper(1000);
             scene.add(axes);
 
+            scene.add(new THREE.AmbientLight(0x444444));
+
             // LIGHT
-            var light = new THREE.PointLight(0xffffff);
-            light.position.set(-100, 150, 100);
-            scene.add(light);
+            var light1 = new THREE.DirectionalLight(0xffffff, 0.5);
+            light1.position.set(1, 1, 1);
+            scene.add(light1);
 
-            // FLOOR
-            var floorTexture = new THREE.TextureLoader().load("./images/checkerboard.jpg");
-            floorTexture.wrapS = THREE.RepeatWrapping;
-            floorTexture.wrapT = THREE.RepeatWrapping;
-            floorTexture.repeat.set(10, 10);
-            var floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
-            var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
-            var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.position.y = -0.5;
-            floor.rotation.x = Math.PI / 2;
-            scene.add(floor);
+            var light2 = new THREE.DirectionalLight(0xffffff, 1.5);
+            light2.position.set(0, - 1, 0);
+            scene.add(light2);
 
+            var triangles = 50;
+            var geometry = new THREE.BufferGeometry();
+            var positions = new Float32Array(triangles * 3 * 3);
+            var normals = new Float32Array(triangles * 3 * 3);
+            var colors = new Float32Array(triangles * 3 * 3);
+            var color = new THREE.Color();
+            var n = 800, n2 = n / 2;	// triangles spread in the cube
+            var d = 120, d2 = d / 2;	// individual triangle size
+            var pA = new THREE.Vector3();
+            var pB = new THREE.Vector3();
+            var pC = new THREE.Vector3();
+            var cb = new THREE.Vector3();
+            var ab = new THREE.Vector3();
+            for (var i = 0; i < positions.length; i += 9) {
+                // positions
+                var x = Math.random() * n - n2;
+                var y = Math.random() * n - n2;
+                var z = Math.random() * n - n2;
+                var ax = x + Math.random() * d - d2;
+                var ay = y + Math.random() * d - d2;
+                var az = z + Math.random() * d - d2;
+                var bx = x + Math.random() * d - d2;
+                var by = y + Math.random() * d - d2;
+                var bz = z + Math.random() * d - d2;
+                var cx = x + Math.random() * d - d2;
+                var cy = y + Math.random() * d - d2;
+                var cz = z + Math.random() * d - d2;
+                positions[i] = ax;
+                positions[i + 1] = ay;
+                positions[i + 2] = az;
+                positions[i + 3] = bx;
+                positions[i + 4] = by;
+                positions[i + 5] = bz;
+                positions[i + 6] = cx;
+                positions[i + 7] = cy;
+                positions[i + 8] = cz;
+                // flat face normals
+                pA.set(ax, ay, az);
+                pB.set(bx, by, bz);
+                pC.set(cx, cy, cz);
+                cb.subVectors(pC, pB);
+                ab.subVectors(pA, pB);
+                cb.cross(ab);
+                cb.normalize();
+                var nx = cb.x;
+                var ny = cb.y;
+                var nz = cb.z;
+                normals[i] = nx;
+                normals[i + 1] = ny;
+                normals[i + 2] = nz;
+                normals[i + 3] = nx;
+                normals[i + 4] = ny;
+                normals[i + 5] = nz;
+                normals[i + 6] = nx;
+                normals[i + 7] = ny;
+                normals[i + 8] = nz;
+                // colors
+                var vx = (x / n) + 0.5;
+                var vy = (y / n) + 0.5;
+                var vz = (z / n) + 0.5;
+                color.setRGB(vx, vy, vz);
+                colors[i] = color.r;
+                colors[i + 1] = color.g;
+                colors[i + 2] = color.b;
+                colors[i + 3] = color.r;
+                colors[i + 4] = color.g;
+                colors[i + 5] = color.b;
+                colors[i + 6] = color.r;
+                colors[i + 7] = color.g;
+                colors[i + 8] = color.b;
+            }
+            geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.addAttribute('normal', new THREE.BufferAttribute(normals, 3));
+            geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.computeBoundingSphere();
+            var material = new THREE.MeshPhongMaterial({
+                color: 0xaaaaaa,
+                specular: 0xffffff,
+                shininess: 250,
+                side: THREE.DoubleSide,
+                vertexColors: THREE.VertexColors,
+            });
+            window.mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
 
-            // SKYBOX/FOG
-            var skyBoxGeometry = new THREE.CubeGeometry(10000, 10000, 10000);
-            var skyBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x9999ff, side: THREE.DoubleSide });
-            var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
-            scene.add(skyBox);
-
-            scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
-
-            // CUSTOM //
-            var cubeGeometry = new THREE.CubeGeometry(50, 50, 50);
-            var cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 1 });
-            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.set(0, 30, 0);
-            scene.add(cube);
-            datas.push(cube);
-
-            var group = new THREE.Group();
-            scene.add(group);
-            datas.push(group);
-
-            var sprite = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#69f' }));
-            sprite.position.set(6, 100, 5);
-            sprite.scale.set(2, 5, 1);
-            group.add(sprite);
-
-            var sprite = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#69f' }));
-            sprite.material.rotation = Math.PI / 3 * 4;
-            sprite.position.set(8, 120, 2);
-            sprite.center.set(0.5, 0);
-            sprite.scale.set(1, - 5, 1);
-            group.add(sprite);
-
-            var group2 = new THREE.Object3D();
-            group2.scale.set(1, 2, 1);
-            group2.position.set(- 5, 140, 0);
-            group2.rotation.set(Math.PI / 2, 0, 0);
-            group.add(group2);
-
-            var sprite = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#69f' }));
-            sprite.position.set(0, 222, 5);
-            sprite.scale.set(10, 2, 3);
-            sprite.center.set(- 0.1, 0);
-            sprite.material.rotation = Math.PI / 3;
-            group2.add(sprite);
+            var geometry = new THREE.BufferGeometry();
+            geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(4 * 3), 3));
+            var material = new THREE.LineBasicMaterial({
+                color: 0xff0000,
+                transparent: true
+            });
+            line = new THREE.Line(geometry, material);
+            scene.add(line);
         }
 
         function initControls() {
@@ -207,16 +256,27 @@
             var cubeZ = folder1.add(parameters, 'z').min(-200).max(200).step(1).listen();
             folder1.open();
 
-            cubeX.onChange(function (value) { cube.position.x = value; });
-            cubeY.onChange(function (value) { cube.position.y = value; });
-            cubeZ.onChange(function (value) { cube.position.z = value; });
+            cubeX.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.x = value;
+            });
+            cubeY.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.y = value;
+            });
+            cubeZ.onChange(function (value) {
+                if (INTERSECTED) INTERSECTED.position.z = value;
+            });
 
             var cubeColor = gui.addColor(parameters, 'color').name('Color').listen();
-            cubeColor.onChange(function (value) // onFinishChange
-            { cube.material.color.setHex(value.replace("#", "0x")); });
+            cubeColor.onChange(function (value) { // onFinishChange
+                if (INTERSECTED) INTERSECTED.material.color.setHex(value.replace("#", "0x"));
+            });
 
             var cubeOpacity = gui.add(parameters, 'opacity').min(0).max(1).step(0.01).name('Opacity').listen();
-            cubeOpacity.onChange(function (value) { cube.material.opacity = value; });
+            cubeOpacity.onChange(function (value) {
+                if (INTERSECTED) {
+                    INTERSECTED.material.opacity = value;
+                }
+            });
 
             var cubeMaterial = gui.add(parameters, 'material', ["Basic", "Lambert", "Phong", "Wireframe"]).name('Material Type').listen();
             cubeMaterial.onChange(function (value) { updateCube(); });
@@ -255,15 +315,16 @@
             } else {// (value == "Wireframe") 
                 newMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
             }
-            cube.material = newMaterial;
-
-            cube.position.x = parameters.x;
-            cube.position.y = parameters.y;
-            cube.position.z = parameters.z;
-            cube.material.color.setHex(parameters.color.replace("#", "0x"));
-            cube.material.opacity = parameters.opacity;
-            cube.material.transparent = true;
-            cube.visible = parameters.visible;
+            if (INTERSECTED) {
+                INTERSECTED.material = newMaterial;
+                INTERSECTED.position.x = parameters.x;
+                INTERSECTED.position.y = parameters.y;
+                INTERSECTED.position.z = parameters.z;
+                INTERSECTED.material.color.setHex(parameters.color.replace("#", "0x"));
+                INTERSECTED.material.opacity = parameters.opacity;
+                INTERSECTED.material.transparent = true;
+                INTERSECTED.visible = parameters.visible;
+            }
         }
 
         function resetCube() {

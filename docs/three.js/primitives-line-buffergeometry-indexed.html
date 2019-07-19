@@ -166,6 +166,7 @@
             geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
             geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             geometry.computeBoundingSphere();
+            
             var lineSegments = new THREE.LineSegments(geometry, material);
             lineSegments.position.x -= 1200;
             lineSegments.position.y -= 1200;

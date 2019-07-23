@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+  <meta charset=" utf-8">
+  <script>
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', someUrl);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function () {
+      var arrayBuffer = xhr.response;
+      // ···
+    };
+
+    xhr.onreadystatechange = function () {
+      if (req.readyState === 4) {
+        var arrayResponse = xhr.response;
+        var dataView = new DataView(arrayResponse);
+        var ints = new Uint32Array(dataView.byteLength / 4);
+        xhrDiv.style.backgroundColor = "#00FF00";
+        xhrDiv.innerText = "Array is " + ints.length + "uints long";
+      }
+    }
+    xhr.send();
+  </script>
+</head>
+
+<body>
+</body>
+
+</html>

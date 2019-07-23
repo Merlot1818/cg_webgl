@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <script>
+    // https://stackoverflow.com/questions/9267899/arraybuffer-to-base64-encoded-string
+    // https://developer.mozilla.org/zh-CN/docs/Web/API/WindowBase64/Base64_encoding_and_decoding#Appendix.3A_Decode_a_Base64_string_to_Uint8Array_or_ArrayBuffer
+    // arraybuffer to base64
+    function arrayBufferToBase64(buffer) {
+      var binary = '';
+      var bytes = new Uint8Array(buffer);
+      var len = bytes.byteLength;
+      for (var i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    }
+
+
+    function base64ToArrayBuffer(base64) {
+      var binary_string = window.atob(base64);
+      var len = binary_string.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    var buf = new Uint8Array([11, 22, 33, 17]);
+    var base64 = arrayBufferToBase64(buf);
+    var arraybuffer = base64ToArrayBuffer(base64);
+    console.log(arraybuffer);
+    console.log(new Uint8Array(arraybuffer));
+
+    var base64String = window.btoa(String.fromCharCode.apply(null, new Uint8Array([11, 22, 33, 17])));
+    console.log(base64String);
+  </script>
+</head>
+
+<body>
+
+</body>
+
+</html>

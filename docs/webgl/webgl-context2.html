@@ -1,0 +1,32 @@
+<html>
+
+<head>
+  <title>WebGL - Canvas</title>
+  <style>
+    canvas {
+      border: 2px dotted blue;
+      background: #cdcdcd;
+    }
+  </style>
+</head>
+
+<body onload="app();">
+  <canvas id="canvas" width="800" height="600">
+    Your browser does not support HTML5
+  </canvas>
+  <script>
+    function app() {
+      var canvas = document.getElementById('canvas');
+      var gl2 = getWebGLContext2(canvas);
+      console.log(gl2);
+    }
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+    function getWebGLContext2(canvas) {
+      if (!canvas) return;
+      return canvas.getContext('webgl2');
+    }
+  </script>
+</body>
+
+</html>

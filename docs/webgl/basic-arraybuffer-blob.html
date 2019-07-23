@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+  <meta charset=" utf-8">
+  <style>
+    canvas {
+      border: 2px dotted blue;
+      background: #cdcdcd;
+    }
+  </style>
+  <script>
+
+    window.onload = function () {
+      // https://developer.mozilla.org/zh-CN/docs/Web/API/Blob
+      // https://www.cnblogs.com/jyuf/p/7251591.html
+      // https://segmentfault.com/a/1190000011563430
+      var s = '<div>hello</div>'
+      var blob = new Blob([s], { type: 'text/xml' });
+      console.log(blob);
+      var abf = new ArrayBuffer(8)
+      var blob = new Blob([abf], { type: 'text/plain' });
+      console.log(blob);
+      var debug = { hello: "world" };
+      var blob = new Blob([JSON.stringify(debug, null, 2)], { type: 'application/json' });
+      console.log(blob);
+
+      var input = document.getElementById("file");
+      input.onchange = function () {
+        var file = this.files[0];
+        if (!!file) {
+          //读取本地文件，以gbk编码方式输出
+          var reader = new FileReader();
+          reader.readAsArrayBuffer(file);
+          reader.onload = function () {
+            console.log(this.result);
+            console.log(new Blob([this.result]));
+          }
+        }
+      }
+
+
+      var canvas = document.getElementById("canvas");
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'red';
+      ctx.fillRect(200,200,100,100);
+
+      canvas.toBlob(function (blob) {
+        var newImg = document.createElement("img"),
+          url = URL.createObjectURL(blob);
+
+        newImg.onload = function () {
+          // no longer need to read the blob so it's revoked
+          URL.revokeObjectURL(url);
+        };
+
+        newImg.src = url;
+        document.body.appendChild(newImg);
+      });
+    }
+
+  </script>
+</head>
+
+<body>
+  <input type="file" id="file" />
+  <canvas id="canvas" width="400" height="400">
+    Your browser does not support HTML5
+  </canvas>
+</body>
+
+</html>

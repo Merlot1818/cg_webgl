@@ -1,0 +1,160 @@
+<html>
+
+<head>
+  <title>WebGL - Simple triangle</title>
+  <script src="./libs/gl-matrix.js"></script>
+</head>
+
+<body onload="app();">
+  <canvas id="canvas" width="800" height="600">
+    Your browser does not support HTML5
+  </canvas>
+  <script>
+    // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGL_API/WebGL_model_view_projection
+    // https://cloud.tencent.com/developer/article/1005103
+    var vertextSource = `
+      attribute vec4 a_Position;
+      uniform mat4 u_ViewMatrix;
+      uniform mat4 u_ProjectMatrix;
+      void main(){
+        gl_Position =  u_ProjectMatrix * u_ViewMatrix * a_Position;
+      }`;
+
+    var fragmentSource = `
+      precision mediump float;
+      uniform vec4 u_Color;
+      void main() {
+        gl_FragColor = u_Color;
+      }`;
+
+    var util = {
+      getCanvas: function (canvasOrid) {
+        let canvas;
+        if (typeof canvasOrid === 'string') {// id
+          canvas = document.getElementById(canvasOrid);
+        } else {
+          canvas = canvasOrid;
+        }
+        return canvas;
+      },
+      // get webgl or webgl context
+      getWebGLContext: function (canvas) {
+        if (!canvas) {
+          return;
+        }
+        return canvas.getContext('experimental-webgls') || canvas.getContext('webgl');
+      },
+      /**
+       * 
+       * @see https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLProgram 
+       **/
+      program: function (gl, vertextSource, fragmentSource) {
+        var vs = this.shader(gl, gl.VERTEX_SHADER, vertextSource);
+        var fs = this.shader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+        var program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          var info = gl.getProgramInfoLog(program);
+          throw 'Could not compile WebGL program. \n\n' + info;
+        }
+        gl.useProgram(program);
+        gl.deleteProgram(program);// https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
+        return program;
+      },
+      /**
+       * @param [int] type 参数为gl.VERTEX_SHADER 或 gl.FRAGMENT_SHADER两者中的一个 
+       **/
+      shader: function (gl, type, source) {
+        var shader = gl.createShader(type);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createShader
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('ERROR compiling shader!', gl.getShaderInfoLog(shader));
+          return;
+        }
+        return shader;
+      },
+      // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
+      buffer: function (gl, vertices, index, size, type, normalized, stride, offset) {
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(index, size, type, normalized, stride, offset);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+        gl.enableVertexAttribArray(index);
+        return buffer;
+      }
+    };
+    function app() {
+      console.log('This is working');
+      var canvas = util.getCanvas('canvas');
+      var gl = util.getWebGLContext(canvas);
+
+      if (!gl) {
+        alert('Your browser does not support WebGL');
+      }
+
+      gl.clearColor(0.75, 0.85, 0.8, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      var program = util.program(gl, vertextSource, fragmentSource);
+
+      // 每个点相同大小
+      var vertices = new Float32Array([
+        -10, 5, 0.0,
+        -10, -5, 0.0,
+        0, 5, 0.0,
+        0, -5, 0.0,
+        -10, 5, -5.0,
+        -10, -5, -5.0,
+        0, 5, 0. - 5,
+        0, -5, -5,
+      ]);
+      var a_Position = gl.getAttribLocation(program, 'a_Position');
+
+      // vbo
+      util.buffer(gl, vertices, a_Position, 3, gl.FLOAT, gl.FALSE, 3 * Float32Array.BYTES_PER_ELEMENT, 0);
+      var radius = 20, angle = 0;
+      gl.enable(gl.DEPTH_TEST);
+
+      // 获取uniform变量的存储位置
+      var u_ViewMatrix = gl.getUniformLocation(program, 'u_ViewMatrix');
+      var u_ProjectMatrix = gl.getUniformLocation(program, 'u_ProjectMatrix');
+      var u_Color = gl.getUniformLocation(program, 'u_Color');
+
+      function draw() {
+        var modelMatrix = mat4.create();
+        var viewMatrix = mat4.create();
+        var position = vec3.fromValues(1.5, -0.2, 0.0);
+        var scale = vec3.fromValues(0.25, 0.5, 1);
+        var quaternion = quat.create();
+        mat4.fromRotationTranslationScale(viewMatrix, quaternion, position, scale);
+        var mv = mat4.create();
+        mat4.multiply(mv, viewMatrix, modelMatrix);
+
+        mat4.lookAt(mv, [radius * Math.sin(angle), 0 , radius * Math.cos(angle)], [0.0, 0.0, 0.0], [0, 1, 0]);
+
+        gl.uniformMatrix4fv(u_ViewMatrix, false, mv);
+
+        var projectMatrix = mat4.create();
+        mat4.perspective(projectMatrix, Math.PI / 2, 1, 0.1, 1000);
+        gl.uniformMatrix4fv(u_ProjectMatrix, false, projectMatrix);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);//清空
+        gl.uniform4f(u_Color, 1.0, 0.0, 0.0, 1.0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        gl.uniform4f(u_Color, 1.0, 1.0, 0.0, 1.0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 4, 4);
+        angle += 0.1;
+      }
+      setInterval(function () {
+        draw();
+      }, 16.6667);
+    };
+  </script>
+</body>
+
+</html>

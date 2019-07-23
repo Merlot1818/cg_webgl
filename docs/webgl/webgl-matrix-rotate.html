@@ -1,0 +1,171 @@
+<html>
+
+<head>
+  <title>WebGL - Simple triangle</title>
+</head>
+
+<body onload="app();">
+  <canvas id="canvas" width="800" height="600">
+    Your browser does not support HTML5
+  </canvas>
+  <script>
+    var vertextSource = `
+      attribute vec4 a_Position;
+      uniform mat4 u_translateMatrix;
+      uniform mat4 u_scaleMatrix;
+      uniform mat4 u_rotateMatrix;
+      void main() {
+        gl_Position = u_rotateMatrix * u_scaleMatrix * u_translateMatrix * a_Position;
+        gl_PointSize = 10.0;
+      }
+      `;
+
+    var fragmentSource = `
+    precision mediump float;
+    void main() {
+      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }`;
+
+    var util = {
+      getCanvas: function (canvasOrid) {
+        let canvas;
+        if (typeof canvasOrid === 'string') {// id
+          canvas = document.getElementById(canvasOrid);
+        } else {
+          canvas = canvasOrid;
+        }
+        return canvas;
+      },
+      // get webgl or webgl context
+      getWebGLContext: function (canvas) {
+        if (!canvas) {
+          return;
+        }
+        return canvas.getContext('experimental-webgls') || canvas.getContext('webgl');
+      },
+      /**
+       * 
+       * @see https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLProgram 
+       **/
+      program: function (gl, vertextSource, fragmentSource) {
+        var vs = this.shader(gl, gl.VERTEX_SHADER, vertextSource);
+        var fs = this.shader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+        var program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          var info = gl.getProgramInfoLog(program);
+          throw 'Could not compile WebGL program. \n\n' + info;
+        }
+        gl.useProgram(program);
+        gl.deleteProgram(program);// https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
+        return program;
+      },
+      /**
+       * @param [int] type 参数为gl.VERTEX_SHADER 或 gl.FRAGMENT_SHADER两者中的一个 
+       **/
+      shader: function (gl, type, source) {
+        var shader = gl.createShader(type);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createShader
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('ERROR compiling shader!', gl.getShaderInfoLog(shader));
+          return;
+        }
+        return shader;
+      },
+      // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
+      buffer: function (gl, vertices, index, size, type, normalized, stride, offset) {
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(index, size, type, normalized, stride, offset);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+        gl.enableVertexAttribArray(index);
+        return buffer;
+      }
+    };
+    function app() {
+      console.log('This is working');
+      var canvas = util.getCanvas('canvas');
+      var gl = util.getWebGLContext(canvas);
+
+      if (!gl) {
+        alert('Your browser does not support WebGL');
+      }
+
+      gl.clearColor(0.75, 0.85, 0.8, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      var program = util.program(gl, vertextSource, fragmentSource);
+
+      var vertices = new Float32Array([
+        // X, Y,
+        0.0, 0.5,
+        -0.5, -0.5,
+        0.5, -0.5,
+      ]);
+      var a_Position = gl.getAttribLocation(program, 'a_Position');
+      // vbo
+      util.buffer(gl, vertices, a_Position, 2, gl.FLOAT, gl.FALSE, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
+
+      // https://webglfundamentals.org/webgl/lessons/webgl-3d-camera.html
+      // https://webglfundamentals.org/webgl/lessons/webgl-matrix-vs-math.html
+      // https://webglfundamentals.org/webgl/lessons/webgl-2d-matrices.html
+      // https://blog.csdn.net/yanyan19880509/article/details/57411916
+      var Tx = 0.5, Ty = 0.1, Tz = 0.1;
+      // webgl按列的模式来读，所以定义矩阵时要使用转置矩阵
+      var translateMatrix = new Float32Array([
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        Tx, Ty, Tz, 1.0
+      ]);
+
+      /* var translateMatrix = new Float32Array([
+        1.0, 0.0, 0.0, Tx,
+        0.0, 1.0, 0.0, Ty,
+        0.0, 0.0, 1.0, Tz,
+        0.0, 0.0, 0.0, 1.0
+      ]); */
+      var u_translateMatrix = gl.getUniformLocation(program, 'u_translateMatrix');
+      if (!u_translateMatrix) {
+        console.log('failed to get the storage locaition of u_translateMatrix');
+        return;
+      }
+      gl.uniformMatrix4fv(u_translateMatrix, false, translateMatrix);
+
+      // 缩小一半
+      var Sx = Sy = Sz = 0.5;
+      // 按列方向读取，定义时使用矩阵转置
+      var scaleMatrix = new Float32Array([
+        Sx, 0.0, 0.0, 0.0,
+        0.0, Sy, 0.0, 0.0,
+        0.0, 0.0, Sz, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      ]);
+      var u_scaleMatrix = gl.getUniformLocation(program, 'u_scaleMatrix');
+      gl.uniformMatrix4fv(u_scaleMatrix, false, scaleMatrix);
+
+
+      // 旋转
+      var ANGLE = 45;
+      var radian = Math.PI * ANGLE / 180.0; // 角度转弧度
+      var cosB = Math.cos(radian), sinB = Math.sin(radian);
+      // 按列方向读取，定义时使用矩阵转置
+      var rotateMatrix = new Float32Array([
+        cosB, sinB, 0.0, 0.0,
+        -sinB, cosB, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      ]);
+      var u_rotateMatrix = gl.getUniformLocation(program, 'u_rotateMatrix');
+      gl.uniformMatrix4fv(u_rotateMatrix, false, rotateMatrix);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+  </script>
+</body>
+
+</html>

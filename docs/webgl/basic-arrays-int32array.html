@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <script>
+    // 二进制数组 https://www.yuque.com/merlot/blog/ubsih6
+
+    // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Int32Array
+    // 从一个数字
+    var int32 = new Int32Array(2);
+    int32[0] = Math.pow(2, 31) - 1;// 32位二进制带符号整数 -2^31~(2^31)-1
+    console.log(int32[0]); // 42
+    console.log(int32.length); // 2
+    console.log(int32.BYTES_PER_ELEMENT); // 4
+
+    // 从一个数组
+    var arr = new Int32Array([21, 31]);
+    console.log(arr[1]); // 31
+
+    // 从一个其他TypedArray
+    var x = new Int32Array([21, 31]);
+    var y = new Int32Array(x);
+    console.log(y[0]); // 21
+
+    // 从一个ArrayBuffer
+    var buffer = new ArrayBuffer(16);
+    var z = new Int32Array(buffer, 0, 4);
+
+  </script>
+</head>
+
+<body>
+
+</body>
+
+</html>

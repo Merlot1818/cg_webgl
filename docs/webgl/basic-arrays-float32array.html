@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>Page Title</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <script>
+    // 二进制数组 https://www.yuque.com/merlot/blog/ubsih6
+
+    // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Float32Array
+    // https://baike.baidu.com/item/%E6%B5%AE%E7%82%B9%E8%A1%A8%E7%A4%BA%E6%B3%95/6267535?fr=aladdin 浮点表示法
+    // https://www.jianshu.com/p/43b1b09f27f4 IEEE754标准: 二, float类型的取值范围
+    // From a length
+    var float32 = new Float32Array(2);
+    float32[0] = Math.pow(2,128);// 32位IEEE浮点数
+    console.log(float32[0]); // 42
+    console.log(float32.length); // 2
+    console.log(float32.BYTES_PER_ELEMENT); // 4
+
+    // From an array
+    var arr = new Float32Array([21, 31]);
+    console.log(arr[1]); // 31
+
+    // From another TypedArray
+    var x = new Float32Array([21, 31]);
+    var y = new Float32Array(x);
+    console.log(y[0]); // 21
+
+    // From an ArrayBuffer
+    var buffer = new ArrayBuffer(16);
+    var z = new Float32Array(buffer, 0, 4);
+
+  </script>
+</head>
+
+<body>
+  <span>
+    在IEEE754标准中进行了单精度浮点数(float)和双精度数浮点数(double)的定义。float有32bit，double有64bit。它们的构成包括符号位、指数位和尾数位。
+    这些位的构成如下：
+    种类-------符号位-------------指数位----------------尾数位----
+    float---第31位(占1bit)---第30-23位(占8bit)----第22-0位(占23bit)
+    double--第63位(占1bit)---第62-52位(占11bit)---第51-0位(占52bit)
+
+    取值范围主要看指数部分：
+    float的指数部分有8bit(2^8)，由于是有符号型，所以得到对应的指数范围-128~128。
+    double的指数部分有11bit(2^11)，由于是有符号型，所以得到对应的指数范围-1024~1024。
+    由于float的指数部分对应的指数范围为-128~128，所以取值范围为：
+    -2^128到2^128，约等于-3.4E38 — +3.4E38
+
+    精度(有效数字)主要看尾数位：
+    float的尾数位是23bit，对应7~8位十进制数，所以有效数字有的编译器是7位，也有的是8位
+  </span>
+</body>
+
+</html>

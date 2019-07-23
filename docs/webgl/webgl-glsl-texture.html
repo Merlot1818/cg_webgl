@@ -1,0 +1,134 @@
+<html>
+
+<head>
+  <title>WebGL - Simple triangle</title>
+</head>
+
+<body onload="app();">
+  <canvas id="canvas" width="800" height="600">
+    Your browser does not support HTML5
+  </canvas>
+  <script>
+    var vertextSource = `
+      attribute vec4 a_Position;
+      attribute float a_PointSize;
+      uniform vec4 u_Offset;
+      void main(){
+        gl_Position = a_Position + u_Offset;
+        gl_PointSize = a_PointSize;
+      }`;
+
+    var fragmentSource = `
+      precision mediump float;
+      uniform sampler2D u_texture;
+      void main() {
+        vec2 texcoord = vec2(0.5, 0.5);
+        gl_FragColor = texture2D(u_texture, texcoord);
+      }`;
+
+    var util = {
+      getCanvas: function (canvasOrid) {
+        let canvas;
+        if (typeof canvasOrid === 'string') {// id
+          canvas = document.getElementById(canvasOrid);
+        } else {
+          canvas = canvasOrid;
+        }
+        return canvas;
+      },
+      // get webgl or webgl context
+      getWebGLContext: function (canvas) {
+        if (!canvas) {
+          return;
+        }
+        return canvas.getContext('experimental-webgls') || canvas.getContext('webgl');
+      },
+      /**
+       * 
+       * @see https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLProgram 
+       **/
+      program: function (gl, vertextSource, fragmentSource) {
+        var vs = this.shader(gl, gl.VERTEX_SHADER, vertextSource);
+        var fs = this.shader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+        var program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          var info = gl.getProgramInfoLog(program);
+          throw 'Could not compile WebGL program. \n\n' + info;
+        }
+        gl.useProgram(program);
+        gl.deleteProgram(program);// https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
+        return program;
+      },
+      /**
+       * @param [int] type 参数为gl.VERTEX_SHADER 或 gl.FRAGMENT_SHADER两者中的一个 
+       **/
+      shader: function (gl, type, source) {
+        var shader = gl.createShader(type);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createShader
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('ERROR compiling shader!', gl.getShaderInfoLog(shader));
+          return;
+        }
+        return shader;
+      },
+      // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/createBuffer
+      buffer: function (gl, vertices, index, size, type, normalized, stride, offset) {
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(index, size, type, normalized, stride, offset);// https://developer.mozilla.org/zh-CN/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+        gl.enableVertexAttribArray(index);
+        return buffer;
+      }
+    };
+    function app() {
+      console.log('This is working');
+      var canvas = util.getCanvas('canvas');
+      var gl = util.getWebGLContext(canvas);
+
+      if (!gl) {
+        alert('Your browser does not support WebGL');
+      }
+
+      gl.clearColor(0.75, 0.85, 0.8, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      var program = util.program(gl, vertextSource, fragmentSource);
+
+      // 每个点不同大小
+      var vertices = new Float32Array([
+        // X, Y,
+        0.0, 0.5, 10.0,
+        -0.5, -0.5, 20.0,
+        0.5, -0.5, 30.0
+      ]);
+      var a_Position = gl.getAttribLocation(program, 'a_Position');
+      var a_PointSize = gl.getAttribLocation(program, 'a_PointSize');
+
+      // vbo
+      util.buffer(gl, vertices, a_Position, 2, gl.FLOAT, gl.FALSE, 3 * Float32Array.BYTES_PER_ELEMENT, 0);
+      util.buffer(gl, vertices, a_PointSize, 1, gl.FLOAT, gl.FALSE, 3 * Float32Array.BYTES_PER_ELEMENT, 2 * Float32Array.BYTES_PER_ELEMENT);
+
+      var offsetLoc = gl.getUniformLocation(program, "u_Offset");
+      gl.uniform4fv(offsetLoc, [0.2, 0.2, 0.2, 0.2]);
+
+      var tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      var level = 0;
+      var width = 1;
+      var height = 1;
+      var data = new Uint8Array([
+        255, 255, 0, 255,   
+      ]);
+      gl.texImage2D(gl.TEXTURE_2D, level, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.drawArrays(gl.POINTS, 0, 3);
+    };
+  </script>
+</body>
+
+</html>

@@ -97,7 +97,7 @@
             scene.add(cube); */
 
             var geometry = [
-                [new THREE.IcosahedronBufferGeometry(100, 4), 50],
+                [new THREE.IcosahedronBufferGeometry(100, 4), 100],
                 [new THREE.IcosahedronBufferGeometry(100, 3), 300],
                 [new THREE.IcosahedronBufferGeometry(100, 2), 1000],
                 [new THREE.IcosahedronBufferGeometry(100, 1), 2000],
@@ -148,7 +148,8 @@
                 material: "Phong",
                 reset: function () {
                     resetCube();
-                }
+                },
+                lod: true,
             };
 
             var folder1 = gui.addFolder('Position');
@@ -174,6 +175,22 @@
             var cubeVisible = gui.add(parameters, 'visible').name('Visible?').listen();
             cubeVisible.onChange(function (value) { cube.visible = value; });
 
+            var lod = gui.add(parameters, 'lod').name('Lod Enable?').listen();
+            lod.onChange(function (value) {
+                if (!value) {
+                    scene.updateMatrixWorld();
+                    scene.traverse(function (object) {
+                        if (object instanceof THREE.LOD) {
+                            var levels = object.levels;
+                            levels[0].object.visible = true;
+                            for (var i = 1, l = levels.length; i < l; i++) {
+                                levels[i].object.visible = false;
+                            }
+                        }
+                    });
+                }
+            });
+
             gui.add(parameters, 'reset').name("Reset Cube Parameters");
             gui.open();
         }
@@ -189,12 +206,17 @@
 
         function render() {
             requestAnimationFrame(render);
-            scene.updateMatrixWorld();
-            scene.traverse(function (object) {
-                if (object instanceof THREE.LOD) {
-                    object.update(camera);
-                }
-            });
+            if (parameters.lod) {
+                scene.updateMatrixWorld();
+                scene.traverse(function (object) {
+                    if (object instanceof THREE.LOD) {
+                        object.update(camera);
+                    }
+                });
+            } else {
+
+            }
+
             renderer.render(scene, camera);
             update();
         }

@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel=stylesheet href="css/base.css" />
+    <link href="./libs/rstats/rStats.css" />
+    <style>
+        * {
+            box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            color: #ddd;
+            font-family: 'Roboto Condensed', tahoma, sans-serif;
+            font-weight: 100;
+            font-size: 13px;
+            background-color: #222;
+            margin: 0px;
+            overflow: hidden;
+            line-height: 1.4em;
+        }
+
+        a {
+            color: #ec6e11;
+            font-weight: bold;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(236, 110, 17, .2);
+            -webkit-transition: color 150ms ease-out, border-color 150ms ease-out;
+            transition: color 150ms ease-out, border-color 150ms ease-out;
+        }
+
+        a:hover {
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, .2);
+        }
+
+        #container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            bottom: 0;
+            background-color: #222;
+        }
+
+        #options {
+            position: absolute;
+            right: 0;
+            top: 10px;
+            width: 34em;
+        }
+
+        #options ul {
+            list-style-type: none;
+            margin-bottom: .5em;
+            display: inline-block;
+        }
+
+        #options li {
+            float: left;
+            margin-right: 4px;
+        }
+
+        h1 {
+            font-weight: 400;
+            font-size: 16px;
+            margin-bottom: .5em;
+            color: #eee;
+        }
+
+        p {
+            margin-bottom: .5em;
+        }
+
+        b {
+            font-weight: inherit;
+            color: #ec6e11;
+        }
+
+        #options div {
+            float: left;
+        }
+
+        #title {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+        }
+
+        .o {
+            clear: both;
+            width: 100%;
+            position: relative;
+        }
+
+        .o p {
+            position: absolute;
+            right: 10px;
+            top: 0;
+        }
+
+        .o span {
+            width: 3em;
+            text-align: right;
+            display: inline-block;
+        }
+
+        .ui {
+            pointer-events: auto;
+            opacity: 1;
+            -webkit-transition: opacity 150ms ease-out;
+            transition: opacity 150ms ease-out;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .button {
+            padding: .5em 1em;
+            background-color: #ec6e11;
+            border: 1px solid #a64b14;
+            outline: none;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: normal;
+            -webkit-transition: background-color 150ms ease-out;
+            text-shadow: 0 -1px 0 rgba(70, 31, 8, .5);
+            height: 0;
+            line-height: 2.5em;
+        }
+
+        .button:hover,
+        .button.active {
+            text-decoration: none;
+            border: 1px solid #a64b14;
+            background-color: #f88c3c;
+        }
+
+        input[type='checkbox']+label:before {
+            display: inline-block;
+            width: 1em;
+            color: #666;
+            font-weight: bold;
+            content: "✓";
+        }
+
+        input[type='checkbox']:checked+label:before {
+            color: #ec6e11;
+            content: "✓";
+        }
+
+        input[type='checkbox'] {
+            display: none;
+        }
+
+        @media (max-width: 880px) {
+            #title {
+                left: 10px;
+                right: 10px;
+            }
+
+            #title p {
+                display: none;
+            }
+
+            #title h1 {
+                width: 100%;
+                text-align: center;
+            }
+
+            #options {
+                top: auto;
+                bottom: 10px;
+                left: 50%;
+                width: 34em;
+                margin-left: -17em;
+            }
+        }
+
+        @media (max-width: 500px) {
+            #options {
+                top: auto;
+                bottom: 10px;
+                left: 50%;
+                margin-left: -9em;
+                width: 18em;
+            }
+
+            .o p b {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body onload="init();">
+
+    <script src="./libs/three.js"></script>
+    <script src="./libs/stats.js"></script>
+    <script src="./libs/dat.gui.min.js"></script>
+    <script src="./libs/dat.color.min.js"></script>
+
+    <script src="./libs/rstats/rStats.js"></script>
+    <script src="./libs/rstats/rStats.extras.js"></script>
+
+    <script src="./js/Detector.js"></script>
+    <script src="./js/controls/OrbitControls.js"></script>
+
+    <script src="./js/threex/KeyboardState.js"></script>
+    <script src="./js/threex/fullscreen.js"></script>
+    <script src="./js/threex/WindowResize.js"></script>
+
+    <div id="viewport" style="position: absolute; left:0px; top:0px"></div>
+    <script>
+        var container, scene, camera, renderer, controls, stats, gui, keyboard, cube, parameters;
+        var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+        var bS, rS, glS, tS;
+
+        function init() {
+            initRenderer();
+            initScene();
+            initCamera();
+            initEvents();
+            initControls();
+            initKeyboard();
+            initGUI();
+            // initStats();
+            initRStats();
+            render();
+        }
+        function initRenderer() {
+            renderer = window.renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+            container = document.getElementById('viewport');
+            container.appendChild(renderer.domElement);
+        }
+
+        function initCamera() {
+            var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+            camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+            camera.position.set(0, 150, 400);
+            camera.lookAt(scene.position);
+            scene.add(camera);
+        }
+
+        function initEvents() {
+            // EVENTS
+            THREEx.WindowResize(renderer, camera);
+            THREEx.FullScreen.bindKey({ charCode: 'f'.charCodeAt(0) });
+        }
+
+        function initScene() {
+            scene = window.scene = new THREE.Scene();
+
+            // LIGHT
+            var light = new THREE.PointLight(0xffffff);
+            light.position.set(-100, 150, 100);
+            scene.add(light);
+
+            // FLOOR
+            var floorTexture = new THREE.TextureLoader().load("./images/checkerboard.jpg");
+            floorTexture.wrapS = THREE.RepeatWrapping;
+            floorTexture.wrapT = THREE.RepeatWrapping;
+            floorTexture.repeat.set(10, 10);
+            var floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
+            var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
+            var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.position.y = -0.5;
+            floor.rotation.x = Math.PI / 2;
+            scene.add(floor);
+
+            // SKYBOX/FOG
+            var skyBoxGeometry = new THREE.CubeGeometry(10000, 10000, 10000);
+            var skyBoxMaterial = new THREE.MeshBasicMaterial({ color: 0x9999ff, side: THREE.DoubleSide });
+            var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
+            scene.add(skyBox);
+
+            scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
+
+            // CUSTOM //
+            var cubeGeometry = new THREE.CubeGeometry(50, 50, 50);
+            var cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 1 });
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 25, 0);
+            scene.add(cube);
+
+            var axes = new THREE.AxisHelper(1000);
+            scene.add(axes);
+
+
+            var mat = new THREE.MeshNormalMaterial({ wireframe: false });
+            function r(d) {
+                return (.5 - Math.random()) * d;
+            }
+
+            var num = 5000;
+            var g = new THREE.CubeGeometry(10, 10, 10);
+            for (var j = 0; j < num; j++) {
+                var m = new THREE.Mesh(g, mat);
+                m.position.set(r(1000), r(1000), r(1000));
+                m.rotation.set(r(2 * Math.PI), r(2 * Math.PI), r(2 * Math.PI));
+                m.scale.set(1 + r(1), 1 + r(1), 1 + r(1));
+                scene.add(m);
+            }
+
+            var num = 500;
+            var geometry = new THREE.Geometry();
+            for (var j = 0; j < num; j++) {
+                var v = new THREE.Vector3(0, 0, 0);
+                v.set(r(100), r(100), r(100));
+                geometry.vertices.push(v);
+            }
+
+            var sprite = THREE.ImageUtils.loadTexture('./libs/rstats/disc.png');
+
+            var material = new THREE.ParticleSystemMaterial({ size: 3, sizeAttenuation: true, map: sprite, transparent: true });
+            material.color.setHSL(1.0, 0.3, 0.7);
+
+            var particles = new THREE.ParticleSystem(geometry, material);
+            particles.sortParticles = true;
+            scene.add(particles);
+
+
+            var cubeMaterial = new THREE.MeshBasicMaterial(
+                { color: 0xffffff, vertexColors: THREE.FaceColors });
+
+            var cubeGeometry = new THREE.CubeGeometry(80, 80, 80, 3, 3, 3);
+            for (var i = 0; i < cubeGeometry.faces.length; i++) {
+                face = cubeGeometry.faces[i];
+                face.color.setRGB(Math.random(), Math.random(), Math.random());
+            }
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(-100, 50, 0);
+            scene.add(cube);
+
+            //////////////////////////////////////////////////////////////////////
+
+            // this material causes a mesh to use colors assigned to vertices
+            //   different colors at face vertices create gradient effect
+            var cubeMaterial = new THREE.MeshBasicMaterial(
+                { color: 0xffffff, vertexColors: THREE.VertexColors });
+
+            var color, face, numberOfSides, vertexIndex;
+
+            // faces are indexed using characters
+            var faceIndices = ['a', 'b', 'c', 'd'];
+
+            // randomly color cube
+            var cubeGeometry = new THREE.CubeGeometry(80, 80, 80, 3, 3, 3);
+            for (var i = 0; i < cubeGeometry.faces.length; i++) {
+                face = cubeGeometry.faces[i];
+                // determine if current face is a tri or a quad
+                numberOfSides = (face instanceof THREE.Face3) ? 3 : 4;
+                // assign color to each vertex of current face
+                for (var j = 0; j < numberOfSides; j++) {
+                    vertexIndex = face[faceIndices[j]];
+                    // initialize color variable
+                    color = new THREE.Color(0xffffff);
+                    color.setHex(Math.random() * 0xffffff);
+                    face.vertexColors[j] = color;
+                }
+            }
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 50, 0);
+            scene.add(cube);
+
+            //////////////////////////////////////////////////////////////////////
+
+            // RGB color cube
+            var size = 80;
+            var point;
+            var cubeGeometry = new THREE.CubeGeometry(size, size, size, 1, 1, 1);
+            for (var i = 0; i < cubeGeometry.faces.length; i++) {
+                face = cubeGeometry.faces[i];
+                // determine if current face is a tri or a quad
+                numberOfSides = (face instanceof THREE.Face3) ? 3 : 4;
+                // assign color to each vertex of current face
+                for (var j = 0; j < numberOfSides; j++) {
+                    vertexIndex = face[faceIndices[j]];
+                    // store coordinates of vertex
+                    point = cubeGeometry.vertices[vertexIndex];
+                    // initialize color variable
+                    color = new THREE.Color(0xffffff);
+                    color.setRGB(0.5 + point.x / size, 0.5 + point.y / size, 0.5 + point.z / size);
+                    face.vertexColors[j] = color;
+                }
+            }
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(100, 50, 0);
+            scene.add(cube);
+        }
+
+        function initRStats() {
+            bS = new BrowserStats();
+            glS = new glStats();
+            tS = new threeStats(renderer);
+
+            rS = new rStats({
+                userTimingAPI: true,
+                values: {
+                    frame: { caption: 'Total frame time (ms)', over: 16, average: true, avgMs: 100 },
+                    fps: { caption: 'Framerate (FPS)', below: 30 },
+                    calls: { caption: 'Calls (three.js)', over: 3000 },
+                    raf: { caption: 'Time since last rAF (ms)', average: true, avgMs: 100 },
+                    rstats: { caption: 'rStats update (ms)', average: true, avgMs: 100 },
+                    texture: { caption: 'GenTex', average: true, avgMs: 100 }
+                },
+                groups: [
+                    { caption: 'Framerate', values: ['fps', 'raf'] },
+                    { caption: 'Frame Budget', values: ['frame', 'texture', 'setup', 'render'] }
+                ],
+                fractions: [
+                    { base: 'frame', steps: ['texture', 'setup', 'render'] }
+                ],
+                plugins: [
+                    bS,
+                    tS,
+                    glS
+                ],
+                CSSPath: './libs/rstats/'
+            });
+        }
+
+        function initControls() {
+            // CONTROLS
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+        }
+
+        function initKeyboard() {
+            keyboard = new THREEx.KeyboardState();
+        }
+
+        function initGUI() {
+            gui = new dat.GUI();
+
+            parameters = {
+                x: 0, y: 25, z: 0,
+                color: "#ff0000", // color (change "#" to "0x")
+                opacity: 1,
+                visible: true,
+                material: "Phong",
+                reset: function () {
+                    resetCube();
+                }
+            };
+
+            var folder1 = gui.addFolder('Position');
+            var cubeX = folder1.add(parameters, 'x').min(-200).max(200).step(1).listen();
+            var cubeY = folder1.add(parameters, 'y').min(0).max(100).step(1).listen();
+            var cubeZ = folder1.add(parameters, 'z').min(-200).max(200).step(1).listen();
+            folder1.open();
+
+            cubeX.onChange(function (value) { cube.position.x = value; });
+            cubeY.onChange(function (value) { cube.position.y = value; });
+            cubeZ.onChange(function (value) { cube.position.z = value; });
+
+            var cubeColor = gui.addColor(parameters, 'color').name('Color').listen();
+            cubeColor.onChange(function (value) // onFinishChange
+            { cube.material.color.setHex(value.replace("#", "0x")); });
+
+            var cubeOpacity = gui.add(parameters, 'opacity').min(0).max(1).step(0.01).name('Opacity').listen();
+            cubeOpacity.onChange(function (value) { cube.material.opacity = value; });
+
+            var cubeMaterial = gui.add(parameters, 'material', ["Basic", "Lambert", "Phong", "Wireframe"]).name('Material Type').listen();
+            cubeMaterial.onChange(function (value) { updateCube(); });
+
+            var cubeVisible = gui.add(parameters, 'visible').name('Visible?').listen();
+            cubeVisible.onChange(function (value) { cube.visible = value; });
+
+            gui.add(parameters, 'reset').name("Reset Cube Parameters");
+            gui.open();
+        }
+
+        function initStats() {
+            // STATS
+            stats = new Stats();
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.bottom = '0px';
+            stats.domElement.style.right = '100px';
+            stats.domElement.style.zIndex = 100;
+            container.appendChild(stats.domElement);
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            // renderer.render(scene, camera);
+            update();
+
+        }
+
+        function updateCube() {
+            var value = parameters.material;
+            var newMaterial;
+            if (value == "Basic") {
+                newMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            } else if (value == "Lambert") {
+                newMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            } else if (value == "Phong") {
+                newMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+            } else {// (value == "Wireframe") 
+                newMaterial = new THREE.MeshBasicMaterial({ wireframe: true });
+            }
+            cube.material = newMaterial;
+
+            cube.position.x = parameters.x;
+            cube.position.y = parameters.y;
+            cube.position.z = parameters.z;
+            cube.material.color.setHex(parameters.color.replace("#", "0x"));
+            cube.material.opacity = parameters.opacity;
+            cube.material.transparent = true;
+            cube.visible = parameters.visible;
+        }
+
+        function resetCube() {
+            parameters.x = 0;
+            parameters.y = 30;
+            parameters.z = 0;
+            parameters.color = "#ff0000";
+            parameters.opacity = 1;
+            parameters.visible = true;
+            parameters.material = "Phong";
+            updateCube();
+        }
+
+        function update() {
+            if (keyboard.pressed("z")) {
+                // do something
+                console.log('z');
+            }
+            if (controls) {
+                controls.update();
+            }
+            if (stats) {
+                stats.update();
+            }
+
+            rS('frame').start();
+            glS.start();
+
+            rS('rAF').tick();
+            rS('FPS').frame();
+
+            rS('texture').start();
+
+            rS('texture').end();
+
+            rS('setup').start();
+
+            rS('setup').end();
+
+            rS('render').start();
+            renderer.render(scene, camera);
+            rS('render').end();
+
+            rS('frame').end();
+
+            rS('memory.limit').set(performance.memory.jsHeapSizeLimit);
+            rS('memory.used').set(performance.memory.usedJSHeapSize);
+            rS('memory.total').set(performance.memory.totalJSHeapSize);
+
+            rS('rStats').start();
+            rS().update();
+            rS('rStats').end();
+        }
+    </script>
+</body>
+
+</html>

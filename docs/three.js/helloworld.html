@@ -38,7 +38,7 @@
             render();
         }
         function initRenderer() {
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = window.renderer =  new THREE.WebGLRenderer({ antialias: true });
 
             renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
             container = document.getElementById('viewport');
@@ -62,7 +62,7 @@
         }
 
         function initScene() {
-            scene = new THREE.Scene();
+            scene = window.scene = new THREE.Scene();
 
             // LIGHT
             var light = new THREE.PointLight(0xffffff);
